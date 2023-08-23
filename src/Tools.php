@@ -6,6 +6,21 @@ class Tools
 {
     public static $debug = false;
 
+    public static $useProxy = false;
+
+    private static $proxy = null;
+
+    public static function setProxy($ip, $port, $username, $password)
+    {
+        self::$useProxy = true;
+
+        self::$proxy = [
+            'ip'       => $ip,
+            'port'     => $port,
+            'username' => $username,
+            'password' => $password,
+        ];
+    }
     public static function generateUUID()
     {
         $data = random_bytes(16);
@@ -24,7 +39,19 @@ class Tools
     public static function request($url, $headers = [], $data = null, $return_request = false)
     {
         $request = curl_init();
-        
+
+        if (self::$useProxy && !is_null(self::$proxy)) {
+            // Set proxy options
+            curl_setopt($request, CURLOPT_PROXY, self::$proxy['ip']);      // Proxy address
+            curl_setopt($request, CURLOPT_PROXYPORT, self::$proxy['port']);         // Proxy port
+            curl_setopt($request, CURLOPT_PROXYUSERPWD, self::$proxy['username'] . ':'.self::$proxy['password']); // Proxy username:password
+            curl_setopt($request, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);  // Use HTTP proxy
+        }
+
+        // Bypass SSL certificate verification
+        curl_setopt($request, CURLOPT_SSL_VERIFYHOST, 0);  // 0 to not check names
+        curl_setopt($request, CURLOPT_SSL_VERIFYPEER, 0);  // 0 to not check certificate
+
         curl_setopt($request, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($request, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($request, CURLOPT_URL, $url);
@@ -36,6 +63,7 @@ class Tools
         }
 
         $data = curl_exec($request);
+
         $url = curl_getinfo($request, CURLINFO_EFFECTIVE_URL);
         curl_close($request);
 
